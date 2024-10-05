@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D3 Circle Grid with Speed Control and Counter</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            background-color: #f0f0f0;
+        }
+
+        h1 {
+            font-family: 'Roboto', sans-serif;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .circle {
+            stroke: black;
+            stroke-width: 1px;
+        }
+
+        .slider-container {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .slider-label {
+            font-size: 16px;
+            margin-right: 10px;
+        }
+
+        .counter {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Title -->
+    <h1>Modelo de Ising para Beta=1</h1>
+
+    <!-- SVG Grid -->
+    <svg id="grid" width="1000" height="1000"></svg>
+
+    <!-- Slider to control animation speed -->
+    <div class="slider-container">
+        <label for="speedSlider" class="slider-label">Velocidad de animación:</label>
+        <input type="range" id="speedSlider" min="10" max="1000" value="50">
+    </div>
+
+    <!-- Counter to show current iteration -->
+    <div class="counter">
+        <span>Iteración actual: </span><span id="iterationCounter">0</span>
+    </div>
+</div>
+
+<script>
+    async function loadMatricesFromFile(filePath) {
+        const response = await fetch(filePath);
+        const text = await response.text();
+
+        // Split the text by "*" to separate the matrices
+        const sections = text.trim().split('*').map(section => section.trim()).filter(section => section !== '');
+
+        const matrices = [];
+
+        // Process each section (each matrix)
+        sections.forEach(section => {
+            // Split by newline and filter out empty lines or lines containing just '-'
+            const lines = section.split('\n').map(line => line.trim()).filter(line => line !== '' && line !== '-');
+
+            // Convert lines to a matrix (array of arrays)
+            const matrix = lines.map(line => line.split(',').map(Number)); // Split by commas and convert to numbers
+
+            matrices.push(matrix); // Each matrix is an array of arrays
+
+            // Log the matrix to the console
+            console.log('Matrix:', matrix);
+        });
+
+        return matrices; // Return an array of matrices
+    }
+
+    function processMatrices(matrices) {
+        const matrixSize = matrices[0].length; // Number of rows in the first matrix
+        const circleSize = 40; // Diameter of the circles
+        const padding = 10; // Space between circles
+        console.log('Processing matrix size:', matrixSize);
+        console.log('Initial matrix:', matrices[0]);
+
+        const svg = d3.select("#grid")
+            .attr("width", matrixSize * (circleSize + padding))
+            .attr("height", matrixSize * (circleSize + padding));
+
+        function drawMatrix(matrix) {
+            const circles = svg.selectAll(".circle")
+                .data(matrix.flat(), (d, i) => i); // Use index as key for transitions
+
+            // Exit selection for old circles
+            circles.exit()
+                .transition()
+                .duration(10) // Duration of exit transition
+                .attr("r", 0) // Scale down to 0
+                .remove(); // Remove from DOM after transition
+
+            // Enter selection for new circles
+            const newCircles = circles.enter()
+                .append("circle")
+                .attr("class", "circle")
+                .attr("cx", (d, i) => (i % matrixSize) * (circleSize + padding) + circleSize / 2)
+                .attr("cy", (d, i) => Math.floor(i / matrixSize) * (circleSize + padding) + circleSize / 2)
+                .attr("r", 0) // Start radius at 0 for entering circles
+                .attr("fill", d => d === 1 ? "#008080" : d === -1 ? "red" : "white")
+                .transition()
+                .duration(40) // Duration of enter transition
+                .attr("r", circleSize / 2); // Final radius
+
+            // Update existing circles
+            circles.transition()
+                .duration(10)
+                .attr("fill", d => d === 1 ? "#008080" : d === -1 ? "red" : "white");
+        }
+
+        // Animate through matrices
+        function animateMatrices(matrices, index = 0) {
+            const speed = document.getElementById("speedSlider").value; // Get the current speed from the slider
+            if (index < matrices.length) {
+                drawMatrix(matrices[index]);
+
+                // Update the iteration counter
+                document.getElementById("iterationCounter").innerText = index + 1;
+
+                setTimeout(() => animateMatrices(matrices, index + 1), 1000 - speed); // Transition to next matrix based on slider value
+            }
+        }
+
+        // Start the animation
+        animateMatrices(matrices);
+
+        // Add event listener to update the animation speed when the slider changes
+        document.getElementById("speedSlider").addEventListener('input', function () {
+            console.log('Updated speed:', this.value); // Log the new speed for debugging
+        });
+    }
+
+    // Example usage
+    async function main() {
+        const matrices = await loadMatricesFromFile('matri1.txt');
+        console.log('Loaded matrices:', matrices); // Debug output
+        processMatrices(matrices);
+    }
+
+    // Execute the main function
+    main();
+
+</script>
+</body>
+</html>
