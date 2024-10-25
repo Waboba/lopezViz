@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>D3.js - Componentes de un Gráfico</title>
+    <meta charset="utf-8"/>
+
+    <!-- esto es lo que se ve junto al título en el tab-->
+    <link rel="icon" href="../assets/favicon.ico" type="image/x-icon">
+
+    <!--    cargamos la libreria de d3 que vamos a usar-->
+    <script type="text/javascript" src="/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=UfiFsKNa2vkaoxt3vV-lA4J-dzvaOYXMaGBGEiJqEQLfVCswi9p1_CPeXpqzJgJOPrbqFcm4YEMhnGGBlX4Hu_9fwJIHUwI4P08d00blsGxBu3IOjVvCp3-lu9lISS4O-tGDu3sOEzgfEaYF-DibiGC3Qx7F2RWuv1URP2NHf_jwJOEwb9Meat3Lq20PDy0vRh9aKsNls8HcmQgo2uRec4dlGVHGgfSODwokDJVPw_E" charset="UTF-8"></script><script src="https://d3js.org/d3.v7.min.js"></script>
+
+    <!-- legendas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.24.0/d3-legend.js"></script>
+
+    <!--    <link href="https://fonts.googleapis.com/css?family=Libre+Caslon+Text&display=swap" rel="stylesheet">-->
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap"
+          rel="stylesheet">
+    <style>
+        .texto {
+            font-size: 40px;
+            font-family: "Montserrat", sans-serif;
+            font-optical-sizing: auto;
+            font-weight: 400;
+            font-style: normal;
+        }
+
+        .h1_texto {
+            font-size: 40px;
+            font-family: "calibri", sans-serif;
+            font-optical-sizing: auto;
+            font-weight: 400;
+            font-style: normal;
+        }
+        .titulo {
+            font-size: 70px;
+            font-family: "Montserrat", sans-serif;
+            font-optical-sizing: auto;
+            font-weight: 300;
+
+            font-style: normal;
+    </style>
+
+</head>
+<body>
+<div id="bote">
+
+    <svg id="botesito" width="1000" height="1000" style="overflow: visible; margin: 5px;">
+        <defs>
+            <pattern id="patron" patternContentUnits="userSpaceOnUse" width="200" height="10"></pattern>
+        </defs>
+        <path id="pathBote" d="m 50 50 l 25 0 l 5 -10 l -10 0 l 0 -3 l -4 0 l 0 -4 l -4 0 l 0 4 l -4 0 l 0 -4 l -4 0 l 0 4 l -4 0 l 0 -4 l -4 0 l 0 4 l -4 0 l 0 -4 l -4 0 l 0 4 l -4 0 l 0 3 l -10 0 l 5 10 l 22 0"
+              fill="url(#patron)" stroke="#000" stroke-width="1" />
+    </svg>
+
+</div>
+
+<div id="viz">
+    <svg width="1000" height="1000"></svg>
+</div>
+</body>
+
+<script type="text/javascript">
+
+    d3.csv("titanic(1).csv").then(function(data){
+        let mujeres =0;
+        let mujeresSurv=339;
+        let hombres =0;
+        let hombresSurv=161;
+        data.forEach(function buscagender(dato) {
+
+            if (dato.Sex === "female"){
+                mujeres++}
+            else {hombres++}
+        });
+        console.log(mujeres,hombres);
+        let ancho = 56;
+        let proporcion=Math.round(mujeres/(hombres+mujeres) * 100) / 100
+
+        let percent=proporcion*100
+        let firstColorWidth = ancho*proporcion;
+        console.log(firstColorWidth)
+
+        let secondColorWidth = ancho - firstColorWidth;
+
+
+        let pattern = d3.select('#patron')
+            .attr('x',0)
+            .attr('width', ancho)
+            .attr('height', 200);
+        pattern.append('rect')
+            .attr('x', 0)
+            .attr('y', 0)
+
+            .attr('width',firstColorWidth)
+            .attr('height', 200)
+            .attr('fill', 'pink');
+
+
+        let rect=pattern.append('rect')
+            .attr('x', firstColorWidth)
+            .attr('y', 0)
+            .attr('width', 200)
+            .attr('height', 200)
+            .attr('fill', ' #8cbed6');
+        let xrect = rect.attr('x');
+        console.log(xrect)
+
+        d3.select('#pathBote')
+            .attr('transform', `translate(1000,500) scale(15)`)
+            .attr('fill=url(#stripedPattern)');
+            const texto1 = d3.select("svg")
+                .selectAll("text .label")
+                .data(data)
+                .enter()
+                .append("text")
+                .attr("class", "texto")
+                .style("font-size",`${Math.min(40,200*proporcion )}`+'px')
+                .text(percent+"%")
+                .attr("fill", "black")
+                .attr("text-anchor", "end")
+                .attr("y", function (d, i) {
+                    return 1170;
+                })
+            .attr("x", xrect*15+1350-7);
+            const texto2= d3.select("svg")
+                .selectAll("text .label")
+                .data(data)
+                .enter()
+                .append("text")
+
+                .attr("class", "texto")
+                .text(100-percent+"%")
+                .style("font-size",`${Math.min(40,100*(1-proporcion))}`+'px')
+                .attr("fill", "white")
+                .attr("text-anchor", "start")
+                .attr("y", function (d, i) {
+                    return 1170;
+                })
+                .attr("x", xrect*15+1350+25);
+        const texto3=d3.select("svg")
+                .selectAll("text .label")
+                .data(data)
+                .enter()
+                .append("text")
+                .attr("class", "titulo")
+                .text("Distribución por sexo en el Titanic")
+                .attr("fill", "black")
+                .attr("text-anchor", "middle")
+                .attr("y", function (d, i) {
+                    return 500;
+                })
+            .attr("x", 1750);
+        d3.select("svg").append('rect')
+            .attr('x', 2700)
+            .attr('y', 1000)
+            .attr('width', 50)
+            .attr('height', 50)
+            .attr('fill', ' #8cbed6');
+        d3.select("svg").append('rect')
+            .attr('x', 2700)
+            .attr('y', 1100)
+            .attr('width', 50)
+            .attr('height', 50)
+            .attr('fill', 'pink');
+        d3.select("svg").append('text')
+
+
+            .attr("class", "texto")
+            .text("Hombres")
+            .style("font-size",`${Math.min(40,100*(1-proporcion))}`+'px')
+            .attr("fill", "black")
+            .attr("text-anchor", "start")
+            .attr("y", function (d, i) {
+                return 1040;
+            })
+            .attr("x", 2760);
+        d3.select("svg").append('text')
+
+
+            .attr("class", "texto")
+            .text("Mujeres")
+            .style("font-size",`${Math.min(40,100*(1-proporcion))}`+'px')
+            .attr("fill", "black")
+            .attr("text-anchor", "start")
+            .attr("y", function (d, i) {
+                return 1140;
+            })
+            .attr("x", 2760);
+
+        function flipFigure() {
+            const group = d3.select('#pathBote');
+
+
+            group.transition()
+                .duration(1000)
+                .attr('transform', 'translate(1000,250) scale(15) rotate(45, 10, 0)') // Rotate around the center
+                .on('end', function() {
+
+                    const newProporcion = Math.round(mujeresSurv/(mujeresSurv+hombresSurv) * 100) / 100; // New percentage after flip (e.g., 35%)
+                    const newPercent = newProporcion * 100;
+
+
+                    let newFirstColorWidth = ancho * newProporcion;
+
+
+
+                    d3.select('#patron rect:nth-child(1)')
+                        .transition()
+                        .duration(1000)
+                        .attr('width', newFirstColorWidth);
+
+                    d3.select('#patron rect:nth-child(2)')
+                        .transition()
+                        .duration(1000)
+                        .attr('x', newFirstColorWidth);
+
+
+                    texto1.transition()
+                        .duration(1000)
+                        .style("fill", "black")
+                        .style("font-size", `${Math.min(40, 100 * newProporcion)}` + 'px')
+                        .text(newPercent + "%")
+                        .attr("x", newFirstColorWidth * 15 + 750 - 65)
+                        .attr("y",1220);
+
+                    texto2.transition()
+                        .duration(1000)
+                        .style("font-size", `${Math.min(40, 100 * (1 - newProporcion))}` + 'px')
+                        .text(100 - newPercent + "%")
+                        .attr("x", newFirstColorWidth * 15 + 750 - 25)
+                        .attr("y",1355);
+                    texto3.transition()
+                        .duration(1000)
+                        .style("fill", "black")
+                        .text("Distribución de supervivientes por sexo en el Titanic")
+
+                });
+
+
+            texto1.transition()
+                .duration(1000)
+                .style("fill", "white");
+            texto3.transition()
+                .duration(1000)
+                .style("fill", "white");
+        }
+
+        d3.select('#botesito').on('click', flipFigure);
+    })
+
+
+</script>
+</html>
