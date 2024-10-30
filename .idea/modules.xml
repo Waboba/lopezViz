@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/../Simulacion-Estoc-stica/.idea/Simulacion-Estoc-stica.iml" filepath="$PROJECT_DIR$/../Simulacion-Estoc-stica/.idea/Simulacion-Estoc-stica.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/lopezViz.iml" filepath="$PROJECT_DIR$/.idea/lopezViz.iml" />
     </modules>
   </component>
