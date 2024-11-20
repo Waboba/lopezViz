@@ -21,7 +21,7 @@
     }
 
     .titulo {
-      font-size: 70px;
+      font-size: 64px;
       font-family: "Montserrat", sans-serif;
       font-weight: 400;
     }
@@ -29,6 +29,7 @@
 
 </head>
 <body>
+
 <div id="bote">
   <svg id="botesito" width="1000" height="1000" style="overflow: visible; margin: 5px;">
     <defs>
@@ -45,6 +46,24 @@
 </div>
 
 <script type="text/javascript">
+  d3.html("silhouette-walk1.svg").then(function(externalSVG) {
+    let svg = d3.select("svg"); // Select the main SVG
+    let importedSVG = d3.select(externalSVG).select("svg"); // Select the SVG inside the imported file
+
+    // Append the imported SVG to your main SVG
+    svg.node().appendChild(importedSVG.node());
+
+    // Set initial position and size of the person
+    importedSVG.attr("id", "person")
+            .attr("x", 1100)
+            .attr("y", 400)
+            .attr("width", 100)
+            .attr("height", 100);
+
+    // Add a button or some trigger to move the person
+
+  });
+
   d3.csv("train.csv").then(function(data){
     let class1 = 0;
     let class2 = 0;
@@ -76,7 +95,7 @@
             .attr('y', 0)
             .attr('height', altura1)
             .attr('width', 200)
-            .attr('fill', '#E9EFC0')
+            .attr('fill', '#ffffff')
             .attr('opacity', 1);
 
     let rect2 = pattern.append('rect')
@@ -84,7 +103,7 @@
             .attr('y', altura1)
             .attr('height', altura2)
             .attr('width', 200)
-            .attr('fill', '#B4E197')
+            .attr('fill', '#000000')
             .attr('opacity', 1);
 
     let rect3 =pattern.append('rect')
@@ -92,55 +111,28 @@
             .attr('y', altura1 + altura2)
             .attr('height', altura3)
             .attr('width', 200)
-            .attr('fill', '#83BD75')
+            .attr('fill', '#b91b29')
             .attr('opacity', 1);
 
     d3.select('#pathBote')
             .attr('transform', `translate(450,-500) scale(25)`)
             .attr('fill', 'url(#patron)');
 
-    const texto1 = d3.select("svg")
-            .selectAll("text .label")
-            .data(data)
-            .enter()
-            .append("text")
-            .attr("class", "texto")
-            .style("font-size",`${Math.min(40,200*proporcion )}`+'px')
-            .text(percent+"%")
-            .attr("fill", "black")
-            .attr("text-anchor", "end")
-            .attr("y", function (d, i) {
-              return 1170;
-            })
-            .attr("x", xrect*15+1350-7);
-    const texto2= d3.select("svg")
-            .selectAll("text .label")
-            .data(data)
-            .enter()
-            .append("text")
 
-            .attr("class", "texto")
-            .text(100-percent+"%")
-            .style("font-size",`${Math.min(40,100*(1-proporcion))}`+'px')
-            .attr("fill", "white")
-            .attr("text-anchor", "start")
-            .attr("y", function (d, i) {
-              return 1170;
-            })
-            .attr("x", xrect*15+1350+25);
+
     const texto3=d3.select("svg")
             .selectAll("text .label")
             .data(data)
             .enter()
             .append("text")
             .attr("class", "titulo")
-            .text("El Titanic")
+            .text("El pasajero más suertudo del Titanic")
             .attr("fill", "black")
             .attr("text-anchor", "middle")
+            .attr('x', 1000)
             .attr("y", function (d, i) {
               return 100;
             })
-            .attr("x", 1000);
     d3.select("svg").append('rect')
             .attr('x', 2700)
             .attr('y', 1000)
@@ -148,86 +140,40 @@
             .attr('height', 50)
             .attr('fill', ' #8cbed6');
     d3.select("svg").append('rect')
-            .attr('x', 2700)
-            .attr('y', 1100)
-            .attr('width', 50)
-            .attr('height', 50)
-            .attr('fill', 'pink');
-    d3.select("svg").append('text')
+            .attr('x', -100)
+            .attr('y', 700)
+            .attr('width', 5000)
+            .attr('height', 10)
+            .attr('fill', 'black');
 
-
-            .attr("class", "texto")
-            .text("Hombres")
-            .style("font-size",`${Math.min(40,100*(1-proporcion))}`+'px')
-            .attr("fill", "black")
-            .attr("text-anchor", "start")
-            .attr("y", function (d, i) {
-              return 1040;
-            })
-            .attr("x", 2760);
-    d3.select("svg").append('text')
-
-
-            .attr("class", "texto")
-            .text("Mujeres")
-            .style("font-size",`${Math.min(40,100*(1-proporcion))}`+'px')
-            .attr("fill", "black")
-            .attr("text-anchor", "start")
-            .attr("y", function (d, i) {
-              return 1140;
-            })
-            .attr("x", 2760);
 
     function flipFigure() {
       const group = d3.select('#pathBote');
 
-
+      // Start the animation for the boat
       group.transition()
               .duration(1000)
               .attr('transform', 'translate(1000,250) scale(15) rotate(45, 10, 0)') // Rotate around the center
-              .on('end', function() {
-
-                const newProporcion = Math.round(mujeresSurv/(mujeresSurv+hombresSurv) * 100) / 100; // New percentage after flip (e.g., 35%)
+              .on('end', function () {
+                const newProporcion = 1
                 const newPercent = newProporcion * 100;
 
 
-                let newFirstColorWidth = ancho * newProporcion;
 
 
 
-                d3.select('#patron rect:nth-child(1)')
-                        .transition()
-                        .duration(1000)
-                        .attr('width', newFirstColorWidth);
-
-                d3.select('#patron rect:nth-child(2)')
-                        .transition()
-                        .duration(1000)
-                        .attr('x', newFirstColorWidth);
-
-
-                texto1.transition()
-                        .duration(1000)
-                        .style("fill", "black")
-                        .style("font-size", `${Math.min(40, 100 * newProporcion)}` + 'px')
-                        .text(newPercent + "%")
-                        .attr("x", newFirstColorWidth * 15 + 750 - 65)
-                        .attr("y",1220);
-
-                texto2.transition()
-                        .duration(1000)
-                        .style("font-size", `${Math.min(40, 100 * (1 - newProporcion))}` + 'px')
-                        .text(100 - newPercent + "%")
-                        .attr("x", newFirstColorWidth * 15 + 750 - 25)
-                        .attr("y",1355);
-                texto3.transition()
-                        .duration(1000)
-                        .style("fill", "black")
-                        .text("Distribución de supervivientes por sexo en el Titanic")
-
+                // Now show the new text after the transition is done
+                showPassengerInfo();
               });
 
+      // Animate the person along with the boat
+      const person = d3.select("#person");
+      person.transition()
+              .duration(1000)
+               // Target x-coordinate
+              .attr("y", 650); // Target y-coordinate
 
+      // Fade out other texts during animation
       texto1.transition()
               .duration(1000)
               .style("fill", "white");
@@ -236,7 +182,76 @@
               .style("fill", "white");
     }
 
+// Function to show the new text after the transition is completed using D3
+    function showPassengerInfo() {
+      const svg = d3.select("svg");
+
+      // Create a group for the text
+      const textGroup = svg.append('g')
+              .attr('id', 'passengerInfo')
+              .attr('transform', 'translate(100, 500)'); // Ensure the text appears within the viewable area
+
+      // Add text elements with correct positioning and styling
+      textGroup.append('text')
+              .attr('class', 'titulo')
+              .text("El pasajero que menos debía haber sobrevivido es")
+              .attr('fill', 'black')
+              .style('font-size', '24px')
+              .style('font-weight', 'bold')
+              .attr('x', 0)
+              .attr('y', 0);  // Start text at top of the group
+
+      textGroup.append('text')
+              .attr('class', 'texto')
+              .text("Nombre: Dahl, Sr. Karl Edwart")
+              .attr('fill', 'black')
+              .style('font-size', '20px')
+              .attr('x', 0)
+              .attr('y', 30);  // Adjust position for next line
+
+      textGroup.append('text')
+              .attr('class', 'texto')
+              .text("Clase: 3")
+              .attr('fill', 'black')
+              .style('font-size', '20px')
+              .attr('x', 0)
+              .attr('y', 60);  // Adjust position for next line
+
+      textGroup.append('text')
+              .attr('class', 'texto')
+              .text("Género: Masculino")
+              .attr('fill', 'black')
+              .style('font-size', '20px')
+              .attr('x', 0)
+              .attr('y', 90);  // Adjust position for next line
+
+      textGroup.append('text')
+              .attr('class', 'texto')
+              .text("Edad: 45")
+              .attr('fill', 'black')
+              .style('font-size', '20px')
+              .attr('x', 0)
+              .attr('y', 120);  // Adjust position for next line
+
+      textGroup.append('text')
+              .attr('class', 'texto')
+              .text("Familia: Sin hermanos/esposa ni padres/hijos a bordo")
+              .attr('fill', 'black')
+              .style('font-size', '20px')
+              .attr('x', 0)
+              .attr('y', 150);  // Adjust position for next line
+
+      // Animate the appearance of the text (fade in effect)
+      textGroup.style('opacity', 0)
+              .transition()
+              .duration(1000)
+              .style('opacity', 1); // Fade in the text
+    }
+
+
+// Attach flipFigure to the #botesito element
     d3.select('#botesito').on('click', flipFigure);
+
   })
 
 
