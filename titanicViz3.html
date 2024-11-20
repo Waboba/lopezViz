@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <title>Titanic</title>
+  <title>D3.js - Componentes de un Gráfico</title>
   <meta charset="utf-8"/>
 
   <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -50,36 +50,31 @@
     let svg = d3.select("svg"); // Select the main SVG
     let importedSVG = d3.select(externalSVG).select("svg"); // Select the SVG inside the imported file
 
-    // Append the imported SVG to your main SVG
+    // Append the imported SVG to your main SVG for person 1
     svg.node().appendChild(importedSVG.node());
 
-    // Set initial position and size of the person
-    importedSVG.attr("id", "person")
+    // Set initial position and size of the first person
+    importedSVG.attr("id", "person1")
             .attr("x", 1100)
             .attr("y", 400)
             .attr("width", 100)
             .attr("height", 100);
 
-    // Add a button or some trigger to move the person
+    // Now add the second person SVG
+    d3.html("Woman-06.svg").then(function(externalSVG2) {
+      let importedSVG2 = d3.select(externalSVG2).select("svg");
+      svg.node().appendChild(importedSVG2.node());
+
+      // Set initial position and size of the second person
+      importedSVG2.attr("id", "person2")
+              .attr("x", 1200)
+              .attr("y", 400)
+              .attr("width", 100)
+              .attr("height", 100);
+    });
 
   });
-  d3.html("woman.svg").then(function(externalSVG) {
-    let svg = d3.select("svg"); // Select the main SVG
-    let importedSVG = d3.select(externalSVG).select("svg"); // Select the SVG inside the imported file
 
-    // Append the imported SVG to your main SVG
-    svg.node().appendChild(importedSVG.node());
-
-    // Set initial position and size of the person
-    importedSVG.attr("id", "person2")
-            .attr("x", 1100)
-            .attr("y", 400)
-            .attr("width", 100)
-            .attr("height", 100);
-
-    // Add a button or some trigger to move the person
-
-  });
   d3.csv("train.csv").then(function(data){
     let class1 = 0;
     let class2 = 0;
@@ -174,41 +169,39 @@
                 const newProporcion = 1
                 const newPercent = newProporcion * 100;
 
-
-
-
-
                 // Now show the new text after the transition is done
                 showPassengerInfo();
+                showPassengerInfo2();
               });
 
-      // Animate the person along with the boat
-      const person = d3.select("#person");
-      person.transition()
+      // Animate both persons along with the boat
+      const person1 = d3.select("#person1");
+      const person2 = d3.select("#person2");
+
+      person1.transition()
               .duration(1000)
-               // Target x-coordinate
+              .attr("y", 650); // Target y-coordinate
+
+      person2.transition()
+              .duration(1000)
               .attr("y", 650); // Target y-coordinate
 
       // Fade out other texts during animation
-      texto1.transition()
-              .duration(1000)
-              .style("fill", "white");
       texto3.transition()
               .duration(1000)
               .style("fill", "white");
     }
-
-// Function to show the new text after the transition is completed using D3
-    function showPassengerInfo() {
+    function showPassengerInfo2() {
       const svg = d3.select("svg");
 
+
       // Create a group for the text
-      const textGroup = svg.append('g')
+      const textGroup2 = svg.append('g')
               .attr('id', 'passengerInfo')
               .attr('transform', 'translate(100, 500)'); // Ensure the text appears within the viewable area
 
       // Add text elements with correct positioning and styling
-      textGroup.append('text')
+      textGroup2.append('text')
               .attr('class', 'titulo')
               .text("El pasajero que menos debía haber sobrevivido es")
               .attr('fill', 'black')
@@ -217,7 +210,7 @@
               .attr('x', 0)
               .attr('y', 0);  // Start text at top of the group
 
-      textGroup.append('text')
+      textGroup2.append('text')
               .attr('class', 'texto')
               .text("Nombre: Dahl, Sr. Karl Edwart")
               .attr('fill', 'black')
@@ -225,7 +218,7 @@
               .attr('x', 0)
               .attr('y', 30);  // Adjust position for next line
 
-      textGroup.append('text')
+      textGroup2.append('text')
               .attr('class', 'texto')
               .text("Clase: 3")
               .attr('fill', 'black')
@@ -233,7 +226,7 @@
               .attr('x', 0)
               .attr('y', 60);  // Adjust position for next line
 
-      textGroup.append('text')
+      textGroup2.append('text')
               .attr('class', 'texto')
               .text("Género: Masculino")
               .attr('fill', 'black')
@@ -241,7 +234,7 @@
               .attr('x', 0)
               .attr('y', 90);  // Adjust position for next line
 
-      textGroup.append('text')
+      textGroup2.append('text')
               .attr('class', 'texto')
               .text("Edad: 45")
               .attr('fill', 'black')
@@ -249,7 +242,7 @@
               .attr('x', 0)
               .attr('y', 120);  // Adjust position for next line
 
-      textGroup.append('text')
+      textGroup2.append('text')
               .attr('class', 'texto')
               .text("Familia: Sin hermanos/esposa ni padres/hijos a bordo")
               .attr('fill', 'black')
@@ -258,18 +251,63 @@
               .attr('y', 150);  // Adjust position for next line
 
       // Animate the appearance of the text (fade in effect)
-      textGroup.style('opacity', 0)
+      textGroup2.style('opacity', 0)
               .transition()
               .duration(1000)
               .style('opacity', 1); // Fade in the text
     }
 
 
-// Attach flipFigure to the #botesito element
-    d3.select('#botesito').on('click', flipFigure);
+    // Function to show the new text after the transition is completed using D3
+    function showPassengerInfo() {
+      const svg = d3.select("svg");
 
-  })
 
+      // Create a group for the text
+      const textGroup = svg.append('g')
+              .attr('id', 'passengerInfo')
+              .attr('transform', 'translate(100, 300)'); // Ensure the text appears within the viewable area
 
+      // Add text elements with correct positioning and styling
+      textGroup.append('text')
+              .attr('class', 'titulo')
+              .text("El pasajero que debía haber muerto")
+              .attr('fill', 'black')
+              .style('font-size', '24px')
+              .style('font-weight', 'bold')
+              .attr('x', 0)
+              .attr('y', 0);  // Start text at top of the group
+
+      textGroup.append('text')
+              .attr('class', 'texto')
+              .text("Nombre: Violet Jessop")
+              .attr('fill', 'black')
+              .style('font-size', '20px')
+              .attr('x', 0)
+              .attr('y', 30);  // Adjust position for next line
+
+      textGroup.append('text')
+              .attr('class', 'texto')
+              .text("Fecha de nacimiento: 2 de octubre de 1887")
+              .attr('fill', 'black')
+              .style('font-size', '20px')
+              .attr('x', 0)
+              .attr('y', 60);  // Adjust position for next line
+
+      textGroup.append('text')
+              .attr('class', 'texto')
+              .text("Ocupación: Enfermera, azafata, y superviviente")
+              .attr('fill', 'black')
+              .style('font-size', '20px')
+              .attr('x', 0)
+              .attr('y', 90);
+    }
+
+    // Trigger the animation when you want
+    flipFigure();
+
+  });
 </script>
+
+</body>
 </html>
