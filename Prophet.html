@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <title>Network Graph with Highlights</title>
+  <style>
+    .node {
+      fill: steelblue;
+      stroke: white;
+      stroke-width: 1.5px;
+    }
+
+    .link {
+      stroke: #999;
+      stroke-width: 2px;
+      stroke-opacity: 0.2;
+    }
+
+    .highlighted {
+      stroke: orange;
+      stroke-width: 4px;
+      stroke-dasharray: 5, 5;
+    }
+
+    #counter {
+      font-family: Arial, sans-serif;
+      font-size: 16px;
+      margin: 10px;
+    }
+     #container {
+       display: flex; /* Enables side-by-side layout */
+       align-items: flex-start; /* Aligns items to the top */
+       gap: 20px; /* Adds space between the graph and the info */
+     }
+
+    #graph-container {
+      flex: 3; /* Graph takes more space */
+    }
+
+    #info-container {
+      flex: 1; /* Info takes less space */
+      font-family: Arial, sans-serif;
+      font-size: 16px;
+      color: #333;
+    }
+
+    #info-container div {
+      margin-bottom: 10px; /* Spacing between info elements */
+    }
+
+    svg {
+      border: 1px solid #ccc; /* Optional: adds a border around the graph */
+    }
+
+  </style>
+</head>
+<body>
+<div id="container">
+  <div id="graph-container"></div>
+  <div id="info-container">
+    <div id="counter">Step: 0</div>
+    <div id="weight-sum">Sum of weights: 0</div>
+    <div id="optimal-weight-sum">Sum of optimal weights: 0</div>
+  </div>
+</div>
+<script>
+  // Load the graph structure from the first file
+  // Load the graph structure and highlight file
+  Promise.all([
+    d3.text("edges.txt"),
+    d3.text("edges_highlight.txt"),
+    d3.text("weights.txt"),
+    d3.text("optimo.txt"),
+  ]).then(([graphData, highlightData, weightData,optimoData]) => {
+    // Parse the edges for the graph structure
+    const edges = graphData.trim().split("\n").map(line => {
+      const [source, target] = line.split(" ").map(Number);
+      return { source, target };
+    });
+    const optimals = optimoData.trim().split("\n").map(line => {
+      const [source, target] = line.split(" ").map(Number);
+      return { source, target };
+    });
+
+    // Extract unique nodes
+    const nodes = Array.from(new Set(edges.flatMap(edge => [edge.source, edge.target])))
+            .map(id => ({ id }));
+
+    // Parse the weights
+    const edgeWeights = weightData.trim().split("\n").map(weight => Number(weight.trim()));
+
+    // Combine edges and weights
+    const edgesWithWeights = edges.map((edge, index) => ({
+      ...edge,
+      weight: edgeWeights[index]
+    }));
+
+    // Parse the highlighting instructions (edges to be highlighted at each step)
+    const highlightLines = highlightData.trim().split("\n").map(line => {
+      if (line.trim() === "*") {
+        // No edges to highlight for this step
+        return null;
+      }
+      return line.trim().split(";").map(pair => {
+        const nodes = pair.trim().split(" ");
+
+        if (nodes.length === 2) {
+          const source = Number(nodes[0]);
+          const target = Number(nodes[1]);
+          return { source, target };
+        }
+        return null;  // Ignore invalid edges
+      }).filter(edge => edge !== null);  // Remove nulls from invalid edges
+    });
+
+    // If highlightLines is empty, add a default empty step
+    if (highlightLines.length === 0) {
+      highlightLines.push([]);
+    }
+
+    // Set up SVG dimensions
+    const width = 800;
+    const height = 600;
+
+    // Create SVG canvas
+    const svg = d3.select("#graph-container")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+    // Create a simulation for the graph layout
+    const simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(edgesWithWeights).id(d => d.id).distance(100))
+            .force("charge", d3.forceManyBody().strength(-200))
+            .force("center", d3.forceCenter(width / 2, height / 2));
+
+    // Draw edges
+    const link = svg.append("g")
+            .attr("class", "links")
+            .selectAll("line")
+            .data(edgesWithWeights)
+            .enter()
+            .append("line")
+            .attr("class", "link");
+
+    const edgeLabels = svg.append("g")
+            .attr("class", "edgeLabels")
+            .selectAll("text")
+            .data(edgesWithWeights)
+            .enter()
+            .append("text")
+            .attr("x", d => (d.source.x + d.target.x) / 2)  // Position in the middle of the edge
+            .attr("y", d => (d.source.y + d.target.y) / 2)  // Position in the middle of the edge
+            .attr("dy", -10)  // Offset slightly above the edge
+            .attr("text-anchor", "middle")
+            .text(d => d.weight)  // Display the weight
+            .style("font-size", "7px")
+            .style("fill", "black");  // Optional: adjust color and style
+
+    // Draw nodes
+    const node = svg.append("g")
+            .attr("class", "nodes")
+            .selectAll("circle")
+            .data(nodes)
+            .enter()
+            .append("circle")
+            .attr("class", "node")
+            .attr("r", 5)
+            .call(d3.drag()
+                    .on("start", dragStarted)
+                    .on("drag", dragged)
+                    .on("end", dragEnded));
+
+    // Add labels
+    const labels = svg.append("g")
+            .attr("class", "labels")
+            .selectAll("text")
+            .data(nodes)
+            .enter()
+            .append("text")
+            .attr("dy", -8)
+            .attr("text-anchor", "middle")
+            .text(d => d.id);
+
+    // Update positions during simulation ticks
+    simulation.on("tick", () => {
+      link
+              .attr("x1", d => d.source.x)
+              .attr("y1", d => d.source.y)
+              .attr("x2", d => d.target.x)
+              .attr("y2", d => d.target.y);
+
+      node
+              .attr("cx", d => d.x)
+              .attr("cy", d => d.y);
+
+      labels
+              .attr("x", d => d.x)
+              .attr("y", d => d.y);
+      edgeLabels
+              .attr("x", d => (d.source.x + d.target.x) / 2)
+              .attr("y", d => (d.source.y + d.target.y) / 2);
+    });
+
+    // Animation logic
+    let stepIndex = 0;
+    const counter = d3.select("#counter");
+
+    function animateStep() {
+      // Reset all edges to default style
+
+      // Apply twinkling effect for the Nth edge (twinkling on the Nth step)
+      const edgeToTwinkle = edgesWithWeights[stepIndex];
+
+      if (edgeToTwinkle) {
+        link.each(function (d) {
+          // Check if the current edge matches the Nth edge (both directions)
+          const isMatch =
+                  (d.source.id === edgeToTwinkle.source.id && d.target.id === edgeToTwinkle.target.id) ||
+                  (d.source.id === edgeToTwinkle.target.id && d.target.id === edgeToTwinkle.source.id);
+
+          if (isMatch) {
+            console.log(`Twinkling edge: ${d.source.id} -> ${d.target.id}`);
+
+            // Twinkle the edge (red color for a brief moment)
+            const edge = d3.select(this);
+            edge
+                    .style("stroke", "red")
+                    .style("stroke-width", "6px")
+                    .style("stroke-opacity", "0.6");
+
+            // After 500ms, reset the edge and proceed to highlighting
+            setTimeout(() => {
+              edge
+                      .style("stroke", "#999")
+                      .style("stroke-width", "2px")
+                      .style("stroke_opacity", "0.6")
+                      .style("stroke-dasharray", null);
+
+              // Proceed to highlight edges after twinkling finishes
+              highlightEdges();
+            }, 300); // Twinkle duration
+          }
+        });
+      } else {
+        // If no edge to twinkle, proceed directly to highlighting
+        highlightEdges();
+      }
+
+      // Function to handle edge highlighting
+      function highlightEdges() {
+        const highlightedEdges = highlightLines[stepIndex];
+        let weightSum = 0;
+
+        // Highlight the edges in orange if any
+        if (highlightedEdges && highlightedEdges.length > 0) {
+          highlightedEdges.forEach((highlightedEdge) => {
+            link.each(function (d) {
+              if (
+                      (d.source.id === highlightedEdge.source && d.target.id === highlightedEdge.target) ||
+                      (d.source.id === highlightedEdge.target && d.target.id === highlightedEdge.source)
+              ) {
+                d3.select(this)
+                        .style("stroke", "orange")
+                        .style("stroke-width", "4px")
+                        .style("stroke-dasharray", "5, 5");
+
+                // Add the weight of the highlighted edge
+                weightSum += d.weight;
+              }
+            });
+          });
+        }
+
+        // Update the sum of weights display
+        d3.select("#weight-sum").text(`Sum of weights: ${weightSum}`);
+
+        // Update the step counter
+        counter.text(`Step: ${stepIndex + 1}`);
+
+        // Move to the next step
+        stepIndex++;
+        if (stepIndex >= highlightLines.length) {
+          stepIndex = 0;
+
+
+          // Highlight optimal edges
+          setTimeout(() => {
+            optimas(() => {
+              clearOptimals();
+            });
+          }, 1000); // Delay to show optimals before clearing
+        } else {
+          // Trigger the next animation step
+          setTimeout(animateStep, 700); // Adjust delay as needed
+        }
+      }
+
+
+      function optimas(callback) {
+        let optimalWeightSum = 0;
+
+        optimals.forEach((optimalEdge) => {
+          link.each(function (d) {
+            if (
+                    (d.source.id === optimalEdge.source && d.target.id === optimalEdge.target) ||
+                    (d.source.id === optimalEdge.target && d.target.id === optimalEdge.source)
+            ) {
+              d3.select(this)
+                      .style("stroke", "blue")
+                      .style("stroke-width", "4px");
+
+              // Add the weight of the optimal edge
+              optimalWeightSum += d.weight;
+            }
+          });
+        });
+
+        // Update the sum of optimal weights display
+        d3.select("#optimal-weight-sum").text(`Sum of optimal weights: ${optimalWeightSum}`);
+
+        // Wait for a moment before calling the callback
+        setTimeout(callback, 4000); // Adjust delay as needed
+      }
+
+
+      function clearOptimals() {
+        // Reset all edges after displaying optimal edges
+        link.style("stroke", "#999")
+                .style("stroke-width", "2px")
+                .style("stroke-dasharray", null)
+                .style("stroke-opacity", "0.2");
+        d3.select("#optimal-weight-sum").text(`Sum of optimal weights: ${0}`);
+        // Restart the animation
+        setTimeout(animateStep, 200); // Adjust delay as needed
+      }
+
+    }
+
+// Start the animation
+    animateStep();
+
+
+// Run the animation
+
+
+    // Dragging behavior functions
+    function dragStarted(event, d) {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    }
+
+    function dragged(event, d) {
+      d.fx = event.x;
+      d.fy = event.y;
+    }
+
+    function dragEnded(event, d) {
+      if (!event.active) simulation.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    }
+  });
+</script>
+</body>
+</html>
