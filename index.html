@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Bar Plot with D3</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+<div id="title">
+    <h1 id="main-title">Distancias medias RWK en grupo control y experimental</h1>
+</div>
+<label for="month-slider">Mes: </label>
+<input type="range" id="month-slider" min="1" max="8" value="1">
+<span id="month-label">1</span>
+
+<label for="type-select">Tipo: </label>
+<select id="type-select">
+    <option value="1">Mecánico</option>
+    <option value="2">Eléctrico</option>
+</select>
+
+<div style="display: flex;">
+    <svg id="chart1"></svg>
+    <svg id="chart2"></svg>
+</div>
+
+<script>
+    const margin = { top: 40, right: 30, bottom: 50, left: 60 },
+        width = 400 - margin.left - margin.right,
+        height = 300 - margin.top - margin.bottom;
+
+    const svg1 = d3.select("#chart1")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const svg2 = d3.select("#chart2")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    let data1, data2;
+
+    Promise.all([
+        d3.json("data3.json"),
+        d3.json("data2.json")
+    ]).then(([json1, json2]) => {
+        data1 = json1;
+        data2 = json2;
+        setupScales();
+        updateCharts();
+    });
+
+    const x0 = d3.scaleBand().range([0, width]).padding(0.1);  // Group by timescale
+    const x1 = d3.scaleBand().padding(0.05);  // Sub-scale for quantities
+    const y = d3.scaleLinear().range([height, 0]);
+
+    const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+    const xAxis1 = svg1.append("g").attr("transform", `translate(0,${height})`);
+    const yAxis1 = svg1.append("g");
+
+    const xAxis2 = svg2.append("g").attr("transform", `translate(0,${height})`);
+    const yAxis2 = svg2.append("g");
+
+    function setupScales() {
+        y.domain([0, 1])
+    }
+
+    function updateCharts() {
+        const selectedMonth = +document.getElementById("month-slider").value;
+        const selectedType = +document.getElementById("type-select").value;
+        document.getElementById("month-label").innerText = selectedMonth;
+
+        const filteredData1 = data1.find(d => d.month === selectedMonth).types.find(t => t.type === selectedType).quantities;
+        const filteredData2 = data2.find(d => d.month === selectedMonth).types.find(t => t.type === selectedType).quantities;
+
+        // Transform data to group by timescale
+        function transformData(originalData) {
+            let timescaleData = [1, 2, 3].map(timescale => ({
+                timescale,
+                values: originalData.map(q => ({
+                    quantity: q.quantity,
+                    mean: q.timescales.find(t => t.timescale === timescale).mean,
+                    std: q.timescales.find(t => t.timescale === timescale).std
+                }))
+            }));
+            return timescaleData;
+        }
+
+        const transformedData1 = transformData(filteredData1);
+        const transformedData2 = transformData(filteredData2);
+
+        x0.domain([1, 2, 3]);
+        x1.domain([1, 2, 3, 4]).range([0, x0.bandwidth()]);
+
+        xAxis1.call(d3.axisBottom(x0).tickFormat(d => `${d*24}Hrs`));
+        yAxis1.call(d3.axisLeft(y));
+
+        xAxis2.call(d3.axisBottom(x0).tickFormat(d => `${d*24}Hrs`));
+        yAxis2.call(d3.axisLeft(y));
+
+        function updateChart(svg, transformedData) {
+            const groups = svg.selectAll(".group")
+                .data(transformedData, d => d.timescale);
+
+            const groupEnter = groups.enter().append("g")
+                .attr("class", "group")
+                .attr("transform", d => `translate(${x0(d.timescale)}, 0)`);
+
+            groups.merge(groupEnter)
+                .transition().duration(500)
+                .attr("transform", d => `translate(${x0(d.timescale)}, 0)`);
+
+            const rects = groups.merge(groupEnter).selectAll("rect")
+                .data(d => d.values, d => d.quantity);
+
+            rects.enter().append("rect")
+                .attr("x", d => x1(d.quantity))
+                .attr("width", x1.bandwidth())
+                .attr("fill", d => color(d.quantity))
+                .attr("y", height)
+                .attr("height", 0)
+                .merge(rects)
+                .transition().duration(500)
+                .attr("x", d => x1(d.quantity))
+                .attr("y", d => y(d.mean))
+                .attr("height", d => height - y(d.mean));
+
+            rects.exit().remove();
+
+            // Error Bars
+            const errorBars = groups.merge(groupEnter).selectAll(".error-bar")
+                .data(d => d.values, d => d.quantity);
+
+            errorBars.enter().append("line")
+                .attr("class", "error-bar")
+                .attr("x1", d => x1(d.quantity) + x1.bandwidth() / 2)
+                .attr("x2", d => x1(d.quantity) + x1.bandwidth() / 2)
+                .attr("y1", height)
+                .attr("y2", height)
+                .attr("stroke", "black")
+                .merge(errorBars)
+                .transition().duration(500)
+                .attr("x1", d => x1(d.quantity) + x1.bandwidth() / 2)
+                .attr("x2", d => x1(d.quantity) + x1.bandwidth() / 2)
+                .attr("y1", d => y(d.mean + d.std))
+                .attr("y2", d => y(d.mean - d.std));
+
+            errorBars.exit().remove();
+        }
+
+        updateChart(svg1, transformedData1);
+        updateChart(svg2, transformedData2);
+    }
+
+    document.getElementById("month-slider").addEventListener("input", updateCharts);
+    document.getElementById("type-select").addEventListener("change", updateCharts);
+</script>
+</body>
+</html>
