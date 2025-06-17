@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<meta charset="utf-8" />
+<body>
+<style>
+  body, html {
+    height: 100%;
+    margin: 0;
+    font-family: 'Roboto', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    background-color: #f0f0f0;
+  }
+
+  h1 {
+    font-family: 'Roboto', sans-serif;
+    font-weight: 700;
+    margin-bottom: 20px;
+  }
+
+
+
+</style>
+<h1>Relación entre nutrientes CHO DG-44</h1>
+<label for="threshold">Umbral de pesos: </label>
+<input type="range" id="threshold" min="0" max="4" step="0.1" value="0" />
+<span id="threshold-value">0</span>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+  const width = 800,
+          height = 800;
+  let allLinks = [],
+          linkSelection,
+          labelSelection;
+  const trues=['ASN', 'ASP', 'SER']
+  d3.csv("weights.csv", d3.autoType).then((data) => {
+    const outerNodeNames = data.columns;
+
+    const centerNodes = Array.from({ length: data.length }, (_, i) => ({
+      id: trues[i],
+      group: "center",
+    }));
+
+    const outerNodes = outerNodeNames.map((name) => ({
+      id: name,
+      group: "outer",
+    }));
+
+    const nodes = centerNodes.concat(outerNodes);
+
+    // Set initial fixed positions for center nodes (around center)
+    const cx = width / 2,
+            cy = height / 2;
+    const angleOffset = Math.PI / 2;
+    centerNodes.forEach((node, i) => {
+      const angle = i * (2 * Math.PI) / centerNodes.length + angleOffset;
+      node.x = cx + 20 * Math.cos(angle);
+      node.y = cy + 20 * Math.sin(angle);
+      node.fx = node.x; // fix position
+      node.fy = node.y;
+    });
+
+    // Set initial fixed positions for outer nodes (ring)
+    outerNodes.forEach((node, i) => {
+      const angle = i * (2 * Math.PI) / outerNodes.length;
+      node.x = cx + 250 * Math.cos(angle);
+      node.y = cy + 250 * Math.sin(angle);
+      node.fx = node.x; // fix position
+      node.fy = node.y;
+    });
+
+    allLinks = [];
+    data.forEach((row, i) => {
+      const centerId = trues[i];
+      for (const [outerId, weight] of Object.entries(row)) {
+        allLinks.push({ source: centerId, target: outerId, weight });
+      }
+    });
+
+    drawGraph(nodes, allLinks);
+  });
+
+  function drawGraph(nodes, links) {
+    const svg = d3
+            .select("body")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+    // Create layers in correct order
+    const linkLayer = svg.append("g").attr("class", "links");
+    const linkLabelLayer = svg.append("g").attr("class", "link-labels");
+    const nodeLayer = svg.append("g").attr("class", "nodes");
+    const nodeLabelLayer = svg.append("g").attr("class", "node-labels");
+
+    const simulation = d3
+            .forceSimulation(nodes)
+            .force(
+                    "link",
+                    d3.forceLink(links).id((d) => d.id).distance(100)
+            )
+            .force("charge", d3.forceManyBody().strength(-200))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("collide", d3.forceCollide(30))
+            // no "end" event listener to reposition & restart
+            .on("tick", ticked);
+
+    // Draw initial links and labels
+    linkSelection = linkLayer
+            .selectAll("line")
+            .data(links)
+            .join("line")
+            .attr("stroke", "#aaa")
+            .attr("stroke-width", (d) => Math.sqrt(Math.abs(d.weight)))
+            .on("mouseover", (event, d) => {
+              labelSelection
+                      .filter((l) => l === d)
+                      .attr("display", "block")
+                      .attr("opacity", 1);
+            })
+            .on("mouseout", (event, d) => {
+              labelSelection
+                      .filter((l) => l === d)
+                      .attr("opacity", 0)
+                      .attr("display", "none");
+            });
+
+    labelSelection = linkLabelLayer
+            .selectAll("text")
+            .data(links)
+            .join("text")
+            .text((d) => d.weight.toFixed(2)) // two decimals here!
+            .attr("font-size", 8)
+            .attr("fill", "black")
+            .attr("text-anchor", "middle")
+            .attr("pointer-events", "none")
+            .attr("display", "none")
+            .attr("opacity", 0);
+
+    const node = nodeLayer
+            .selectAll("circle")
+            .data(nodes)
+            .join("circle")
+            .attr("r", 10)
+            .attr("fill", (d) => (d.group === "center" ? "#ff5733" : "#3498db"))
+            .call(drag(simulation));
+
+    const nodeLabel = nodeLabelLayer
+            .selectAll("text")
+            .data(nodes)
+            .join("text")
+            .text((d) => d.id)
+            .attr("font-size", 10)
+            .attr("dy", -15);
+
+    function ticked() {
+      linkSelection
+              .attr("x1", (d) => d.source.x)
+              .attr("y1", (d) => d.source.y)
+              .attr("x2", (d) => d.target.x)
+              .attr("y2", (d) => d.target.y);
+
+      labelSelection
+              .attr("x", (d) => (d.source.x + d.target.x) / 2)
+              .attr("y", (d) => (d.source.y + d.target.y) / 2);
+
+      node.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
+
+      nodeLabel.attr("x", (d) => d.x).attr("y", (d) => d.y);
+    }
+
+    d3.select("#threshold").on("input", function () {
+      const threshold = +this.value;
+      d3.select("#threshold-value").text(threshold.toFixed(1));
+
+      const filtered = allLinks.filter((d) => Math.abs(d.weight) >= threshold);
+
+      linkSelection = linkLayer.selectAll("line").data(filtered, (d) => `${d.source}-${d.target}`);
+      linkSelection.exit().remove();
+      linkSelection = linkSelection
+              .enter()
+              .append("line")
+              .attr("stroke", "#aaa")
+              .attr("stroke-width", (d) => Math.sqrt(Math.abs(d.weight)))
+              .on("mouseover", (event, d) => {
+                labelSelection
+                        .filter((l) => l === d)
+                        .attr("display", "block")
+                        .attr("opacity", 1);
+              })
+              .on("mouseout", (event, d) => {
+                labelSelection
+                        .filter((l) => l === d)
+                        .attr("opacity", 0)
+                        .attr("display", "none");
+              })
+              .merge(linkSelection);
+
+      labelSelection = linkLabelLayer.selectAll("text").data(filtered, (d) => `${d.source}-${d.target}`);
+      labelSelection.exit().remove();
+      labelSelection = labelSelection
+              .enter()
+              .append("text")
+              .attr("font-size", 8)
+              .attr("fill", "black")
+              .attr("text-anchor", "middle")
+              .attr("pointer-events", "none")
+              .text((d) => d.weight.toFixed(2))
+              .attr("display", "none")
+              .attr("opacity", 0)
+              .merge(labelSelection);
+
+      simulation.alpha(0.3).restart();
+    });
+  }
+
+  function drag(simulation) {
+    return d3
+            .drag()
+            .on("start", (event) => {
+              if (!event.active) simulation.alphaTarget(0.3).restart();
+              event.subject.fx = event.subject.x;
+              event.subject.fy = event.subject.y;
+            })
+            .on("drag", (event) => {
+              event.subject.fx = event.x;
+              event.subject.fy = event.y;
+            })
+            .on("end", (event) => {
+              if (!event.active) simulation.alphaTarget(0);
+              event.subject.fx = null;
+              event.subject.fy = null;
+            });
+  }
+</script>
+</body>
